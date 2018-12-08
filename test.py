@@ -20,6 +20,7 @@ import sys
 import io
 import json
 
+ec2 = boto3.resource('ec2')
 client = boto3.client('s3')
 s3 = boto3.resource('s3')
 path = get_file( 'nietzsche.txt',
@@ -124,7 +125,7 @@ def main():
     train=True
 
     if train:
-        while nb_epoch < 60:
+        while nb_epoch < 61:
             nb_epoch += 1
             model.fit(x, y,
                   batch_size=BATCH_SIZE,
@@ -149,6 +150,7 @@ def main():
                 print('----- Diversity = {} -----'.format(k))
                 print(v)
                 print('\n')
+    ec2.instances.filter(InstanceIds=['i-04fc019e944e13688']).terminate()
 
 if __name__=="__main__":
     main()
