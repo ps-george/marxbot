@@ -7,7 +7,8 @@ It is recommended to run this script on GPU, as recurrent
 networks are quite computationally intensive.  
 If you try this script on new data, make sure your corpus
 has at least ~100k characters. ~1M is better.
-''' from __future__ import print_function
+'''
+from __future__ import print_function
 from keras.models import Sequential
 from keras.layers import Activation, LSTM, Dense, TimeDistributed, GRU
 from keras.optimizers import RMSprop
