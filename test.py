@@ -109,7 +109,7 @@ print_callback = LambdaCallback(on_epoch_end=on_epoch_end)
 BATCH_SIZE = 128
 EPOCHS = 30
 nb_epoch = 0
-client = boto3.client('S3')
+client = boto3.client('s3')
 client.put_object(Body=model.to_json(),
                   Bucket='psgeorge-deeplearning-bucket',
                   Key='checkpoint_{}_epochs'.format(nb_epoch))
