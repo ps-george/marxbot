@@ -55,12 +55,17 @@ for i, sentence in enumerate(sentences):
 
 # build the model: a single LSTM
 print('Build model...')
+vocab_size = len(chars)
+hidden_dim = 128
+num_layers = 3
 model = Sequential()
-model.add(LSTM(128, input_shape=(maxlen, len(chars))))
-model.add(Dense(len(chars), activation='softmax'))
-
+model.add(LSTM(hidden_dim, input_shape=(seqlen, vocab_size), return_sequences=True))
 optimizer = RMSprop(lr=0.01)
-model.compile(loss='categorical_crossentropy', optimizer=optimizer)
+for i in range(num_layers-1):
+    model.add(LSTM(hidden_dim, return_sequences=True))
+    model.add(TimeDistributed(Dense(vocab_size)))
+    model.add(Activation('softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer)
 
 
 def sample(preds, temperature=1.0):
