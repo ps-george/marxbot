@@ -98,7 +98,7 @@ def sample(preds, temperature=1.0):
     return np.argmax(probas)
 
 
-def generate_text(epoch, length):
+def generate_text(epoch, length=400):
     ENDINGS = ['.', '!', '?', ' ']
     start_index = random.randint(0, len(text) - seqlen - 1)
     generated = {}
