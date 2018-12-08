@@ -7,9 +7,7 @@ It is recommended to run this script on GPU, as recurrent
 networks are quite computationally intensive.  
 If you try this script on new data, make sure your corpus
 has at least ~100k characters. ~1M is better.
-'''
-
-from __future__ import print_function
+''' from __future__ import print_function
 from keras.models import Sequential
 from keras.layers import Activation, LSTM, Dense, TimeDistributed, GRU
 from keras.optimizers import RMSprop
@@ -19,6 +17,7 @@ import numpy as np
 import random
 import sys
 import io
+import json
 
 client = boto3.client('s3')
 s3 = boto3.resource('s3')
@@ -99,12 +98,10 @@ def generate_text(epoch, length=400):
 
             # end on punctuation
             if i == length-1:
-                print(i, next_char)
                 if next_char not in ENDINGS:
                     i -= 1
                 if next_char == ' ':
                     next_char = '.'
-                print(i)
             generated[str(diversity)] += next_char
             sentence = sentence[1:] + next_char
             i+=1
@@ -139,6 +136,10 @@ def main():
             if nb_epoch % 10 == 0:
                 # Save/log generated text somewhere, maybe just for checkpoint epochs
                 store_weights(model)
+                filename = 'output_epoch_{}.txt'.format(nb_epoch)
+                with open(filename, 'a') as f:
+                    json.dump(txt, f)
+                s3.Bucket(bucket_name).upload_file(filename, filename)
     else:
         model.load_weights("model_params.h5")
         for i in range (5):
