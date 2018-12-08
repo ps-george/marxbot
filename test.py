@@ -21,14 +21,9 @@ import random
 import sys
 import io
 
-local_params_path = "/model_params" # temp path to export your network parameters i.e. weights
-
-bucket_name = "psgeorge-deeplearning-bucket" # s3 key to save your network to
-s3_params_key = "model_params_{}_epochs" # s3 key to save your network parameters i.e. weights
-
-
-path = get_file(
-    'nietzsche.txt',
+client = boto3.client('s3')
+s3 = boto3.resource('s3')
+path = get_file( 'nietzsche.txt',
     origin='https://s3.amazonaws.com/text-datasets/nietzsche.txt')
 with io.open(path, encoding='utf-8') as f:
     text = f.read().lower()
@@ -39,18 +34,18 @@ print('total chars:', len(chars))
 char_indices = dict((c, i) for i, c in enumerate(chars))
 indices_char = dict((i, c) for i, c in enumerate(chars))
 
-# cut the text in semi-redundant sequences of maxlen characters
-maxlen = 40
+# cut the text in semi-redundant sequences of seqlen characters
+seqlen = 40
 step = 3
 sentences = []
 next_chars = []
-for i in range(0, len(text) - maxlen, step):
-    sentences.append(text[i: i + maxlen])
-    next_chars.append(text[i + maxlen])
+for i in range(0, len(text) - seqlen, step):
+    sentences.append(text[i: i + seqlen])
+    next_chars.append(text[i + seqlen])
 print('nb sequences:', len(sentences))
 
 print('Vectorization...')
-x = np.zeros((len(sentences), maxlen, len(chars)), dtype=np.bool)
+x = np.zeros((len(sentences), seqlen, len(chars)), dtype=np.bool)
 y = np.zeros((len(sentences), len(chars)), dtype=np.bool)
 for i, sentence in enumerate(sentences):
     for t, char in enumerate(sentence):
@@ -78,51 +73,78 @@ def sample(preds, temperature=1.0):
     return np.argmax(probas)
 
 
-def generate_text(epoch):
-    # Function invoked at end of each epoch. Prints generated text.
-    print()
-    print('----- Generating text after Epoch: %d' % epoch)
-
-    start_index = random.randint(0, len(text) - maxlen - 1)
-    for diversity in [0.3, 0.5, 0.8]:
-        print('----- diversity:', diversity)
-
-        generated = ''
-        sentence = text[start_index: start_index + maxlen]
-        generated += sentence
-        print('----- Generating with seed: "' + sentence + '"')
-        sys.stdout.write(generated)
-
-        for i in range(400):
-            x_pred = np.zeros((1, maxlen, len(chars)))
+def generate_text(epoch, length):
+    ENDINGS = ['.', '!', '?', ' ']
+    start_index = random.randint(0, len(text) - seqlen - 1)
+    generated = {}
+    next_char = ''
+    for diversity in [0.4, 0.5, 0.6, 0.7]:
+        generated[str(diversity)] = ''
+        sentence = text[start_index: start_index + seqlen]
+        generated[str(diversity)] += sentence
+        i = 0
+        while(i<length):
+            prev_char = next_char
+            x_pred = np.zeros((1, seqlen, len(chars)))
             for t, char in enumerate(sentence):
                 x_pred[0, t, char_indices[char]] = 1.
 
             preds = model.predict(x_pred, verbose=0)[0]
             next_index = sample(preds, diversity)
             next_char = indices_char[next_index]
+            if next_char == '\n' and prev_char not in ENDINGS:
+                next_char = np.random.choice([' ',',',';'])
 
-            generated += next_char
+            # end on punctuation
+            if i == length-1:
+                print(i, next_char)
+                if next_char not in ENDINGS:
+                    i -= 1
+                if next_char == ' ':
+                    next_char = '.'
+                print(i)
+            generated[str(diversity)] += next_char
             sentence = sentence[1:] + next_char
+            i+=1
+    return generated
 
-            sys.stdout.write(next_char)
-            sys.stdout.flush()
-        print()
+def store_weights(model, epoch):
+    local_params_path = "model_params" # temp path to export your network parameters i.e. weights
+    bucket_name = "psgeorge-deeplearning-bucket" # s3 key to save your network to
+    s3_params_key = "v2_model_params_{}_epochs" # s3 key to save your network parameters i.e. weights
+    model.save_weights(local_params_path.format(epoch))
+    s3.Bucket(bucket_name).upload_file(local_params_path, s3_params_key.format(epoch))
+    return
 
-BATCH_SIZE = 128
-EPOCHS = 30
-nb_epoch = 0
-client = boto3.client('s3')
-s3 = boto3.resource('s3')
-model.save_weights(local_params_path)
-s3.Bucket(bucket_name).upload_file(local_params_path, s3_params_key.format(nb_epoch))
-while True:
-    nb_epoch += 1
-    model.fit(x, y,
-          batch_size=BATCH_SIZE,
-          epochs=1)
-    generate_text(nb_epoch)
-    if nb_epoch % 10 == 0:
-        model.save_weights(local_params_path.format(nb_epoch))
-        s3.Bucket(bucket_name).upload_file(local_params_path, s3_params_key.format(nb_epoch))
 
+def main():
+    BATCH_SIZE = 128
+    EPOCHS = 30
+    nb_epoch = 0
+    train=True
+
+    if train:
+        while nb_epoch < 60:
+            nb_epoch += 1
+            model.fit(x, y,
+                  batch_size=BATCH_SIZE,
+                  epochs=1)
+            txt = generate_text(nb_epoch)
+            for k,v in txt.items():
+                print('----- Diversity = {} -----'.format(k))
+                print(v)
+                print('\n')
+            if nb_epoch % 10 == 0:
+                # Save/log generated text somewhere, maybe just for checkpoint epochs
+                store_weights(model)
+    else:
+        model.load_weights("model_params.h5")
+        for i in range (5):
+            txt = generate_text(None, 500)
+            for k,v in txt.items():
+                print('----- Diversity = {} -----'.format(k))
+                print(v)
+                print('\n')
+
+if __name__=="__main__":
+    main()
