@@ -10,7 +10,6 @@ has at least ~100k characters. ~1M is better.
 '''
 
 from __future__ import print_function
-from keras.callbacks import LambdaCallback
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
@@ -73,13 +72,13 @@ def sample(preds, temperature=1.0):
     return np.argmax(probas)
 
 
-def on_epoch_end(epoch, _):
+def generate_text(epoch):
     # Function invoked at end of each epoch. Prints generated text.
     print()
     print('----- Generating text after Epoch: %d' % epoch)
 
     start_index = random.randint(0, len(text) - maxlen - 1)
-    for diversity in [0.2, 0.5, 1.0, 1.2]:
+    for diversity in [0.3, 0.5, 0.8]:
         print('----- diversity:', diversity)
 
         generated = ''
@@ -104,8 +103,6 @@ def on_epoch_end(epoch, _):
             sys.stdout.flush()
         print()
 
-print_callback = LambdaCallback(on_epoch_end=on_epoch_end)
-
 BATCH_SIZE = 128
 EPOCHS = 30
 nb_epoch = 0
@@ -117,8 +114,8 @@ while True:
     nb_epoch += 1
     model.fit(x, y,
           batch_size=BATCH_SIZE,
-          epochs=1,
-          callbacks=[print_callback])
+          epochs=1)
+    generate_text(nb_epoch)
     if nb_epoch % 10 == 0:
         saved_model = model.to_json()
         client.put_object(Body=saved_model,
