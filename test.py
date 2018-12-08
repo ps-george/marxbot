@@ -34,9 +34,9 @@ char_indices = dict((c, i) for i, c in enumerate(chars))
 indices_char = dict((i, c) for i, c in enumerate(chars))
 
 # cut the text in semi-redundant sequences of seqlen characters
-seqlen = 40
+seqlen = 100
 VOCAB_SIZE = len(chars)
-step = 5
+step = 1
 sentences = []
 next_chars = []
 for i in range(0, len(text) - seqlen, step):
@@ -59,7 +59,7 @@ print('Build model...')
 hidden_dim = 128
 num_layers = 3
 model = Sequential()
-model.add(GRU(hidden_dim, input_shape=(seqlen, VOCAB_SIZE)))
+model.add(LSTM(hidden_dim, input_shape=(seqlen, VOCAB_SIZE)))
 model.add(Dense(VOCAB_SIZE, activation='softmax'))
 optimizer = RMSprop(lr=0.01)
 model.compile(loss='categorical_crossentropy', optimizer=optimizer)
