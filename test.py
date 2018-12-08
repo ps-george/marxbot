@@ -11,8 +11,7 @@ has at least ~100k characters. ~1M is better.
 
 from __future__ import print_function
 from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import LSTM
+from keras.layers import Activation, LSTM, Dense, TimeDistributed
 from keras.optimizers import RMSprop
 from keras.utils.data_utils import get_file
 import boto3
@@ -36,7 +35,7 @@ indices_char = dict((i, c) for i, c in enumerate(chars))
 
 # cut the text in semi-redundant sequences of seqlen characters
 seqlen = 40
-step = 3
+step = 1
 sentences = []
 next_chars = []
 for i in range(0, len(text) - seqlen, step):
@@ -45,25 +44,46 @@ for i in range(0, len(text) - seqlen, step):
 print('nb sequences:', len(sentences))
 
 print('Vectorization...')
-x = np.zeros((len(sentences), seqlen, len(chars)), dtype=np.bool)
-y = np.zeros((len(sentences), len(chars)), dtype=np.bool)
-for i, sentence in enumerate(sentences):
-    for t, char in enumerate(sentence):
-        x[i, t, char_indices[char]] = 1
-    y[i, char_indices[next_chars[i]]] = 1
+#  Create input and target sequences
+SEQ_LENGTH = seqlen
+VOCAB_SIZE = len(chars)
+sequences = len(text)//SEQ_LENGTH
+x = np.zeros((sequences, SEQ_LENGTH, VOCAB_SIZE))
+y = np.zeros((sequences, SEQ_LENGTH, VOCAB_SIZE))
+for i in range(0, sequences):
+    X_sequence = text[i*SEQ_LENGTH:(i+1)*SEQ_LENGTH]
+    X_sequence_ix = [char_indices[value] for value in X_sequence]
+    input_sequence = np.zeros((SEQ_LENGTH, VOCAB_SIZE))
+    for j in range(SEQ_LENGTH):
+        input_sequence[j][X_sequence_ix[j]] = 1
+    x[i] = input_sequence
+
+    y_sequence = text[i*SEQ_LENGTH+1:(i+1)*SEQ_LENGTH+1]
+    y_sequence_ix = [char_indices[value] for value in y_sequence]
+    target_sequence = np.zeros((SEQ_LENGTH, VOCAB_SIZE))
+    for j in range(SEQ_LENGTH):
+        target_sequence[j][y_sequence_ix[j]] = 1
+    y[i] = target_sequence
+
+
+# x = np.zeros((len(sentences), seqlen, len(chars)), dtype=np.bool)
+# y = np.zeros((len(sentences), len(chars)), dtype=np.bool)
+# for i, sentence in enumerate(sentences):
+#     for t, char in enumerate(sentence):
+#         x[i, t, char_indices[char]] = 1
+#     y[i, char_indices[next_chars[i]]] = 1
 
 
 # build the model: a single LSTM
 print('Build model...')
-vocab_size = len(chars)
 hidden_dim = 128
 num_layers = 3
 model = Sequential()
-model.add(LSTM(hidden_dim, input_shape=(seqlen, vocab_size), return_sequences=True))
+model.add(LSTM(hidden_dim, input_shape=(None, VOCAB_SIZE), return_sequences=True))
 optimizer = RMSprop(lr=0.01)
 for i in range(num_layers-1):
     model.add(LSTM(hidden_dim, return_sequences=True))
-    model.add(TimeDistributed(Dense(vocab_size)))
+    model.add(TimeDistributed(Dense(VOCAB_SIZE)))
     model.add(Activation('softmax'))
     model.compile(loss='categorical_crossentropy', optimizer=optimizer)
 
