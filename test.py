@@ -21,6 +21,12 @@ import random
 import sys
 import io
 
+local_params_path = "/model_params" # temp path to export your network parameters i.e. weights
+
+bucket_name = "psgeorge-deeplearning-bucket" # s3 key to save your network to
+s3_params_key = "model_params_{}_epochs" # s3 key to save your network parameters i.e. weights
+
+
 path = get_file(
     'nietzsche.txt',
     origin='https://s3.amazonaws.com/text-datasets/nietzsche.txt')
@@ -107,9 +113,9 @@ BATCH_SIZE = 128
 EPOCHS = 30
 nb_epoch = 0
 client = boto3.client('s3')
-client.put_object(Body=model.to_json(),
-                  Bucket='psgeorge-deeplearning-bucket',
-                  Key='checkpoint_{}_epochs'.format(nb_epoch))
+s3 = boto3.resource('s3')
+model.save_weights(local_params_path)
+s3.Bucket(bucket_name).upload_file(local_params_path, s3_params_key.format(nb_epoch))
 while True:
     nb_epoch += 1
     model.fit(x, y,
@@ -117,9 +123,6 @@ while True:
           epochs=1)
     generate_text(nb_epoch)
     if nb_epoch % 10 == 0:
-        saved_model = model.to_json()
-        client.put_object(Body=saved_model,
-                          Bucket='psgeorge-deeplearning-bucket',
-                          Key='checkpoint_{}_epochs'.format(nb_epoch))
+        model.save_weights(local_params_path.format(nb_epoch))
+        s3.Bucket(bucket_name).upload_file(local_params_path, s3_params_key.format(nb_epoch))
 
-model.save_weights('model_weights_{}_{}.hdf5'.format(BATCH_SIZE, EPOCHS))
