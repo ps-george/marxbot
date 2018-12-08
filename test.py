@@ -20,7 +20,7 @@ import sys
 import io
 import json
 
-ec2 = boto3.resource('ec2')
+ec2 = boto3.resource('ec2', region_name='eu-central-1')
 client = boto3.client('s3')
 s3 = boto3.resource('s3')
 path = get_file( 'nietzsche.txt',
