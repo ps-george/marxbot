@@ -36,4 +36,7 @@ scp -i /path/my-key-pair.pem /path/SampleFile.txt ubuntu@c2-198-51-100-1.compute
 
 - [ ] Get network running on the cloud
 
+## Notes
+
+When training single RNN network, output goes bad between 20 and 30 epochs (overfitting).
 
