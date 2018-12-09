@@ -20,6 +20,7 @@ import sys
 import io
 import json
 
+BUCKET_NAME = "psgeorge-deeplearning-bucket" # s3 key to save your network to
 ec2 = boto3.resource('ec2', region_name='eu-central-1')
 client = boto3.client('s3')
 s3 = boto3.resource('s3')
@@ -111,10 +112,9 @@ def generate_text(epoch, length=400):
 
 def store_weights(model, epoch=None):
     local_params_path = "model_params" # temp path to export your network parameters i.e. weights
-    bucket_name = "psgeorge-deeplearning-bucket" # s3 key to save your network to
     s3_params_key = "v2_model_params_{}_epochs" # s3 key to save your network parameters i.e. weights
     model.save_weights(local_params_path.format(epoch))
-    s3.Bucket(bucket_name).upload_file(local_params_path, s3_params_key.format(epoch))
+    s3.Bucket(BUCKET_NAME).upload_file(local_params_path, s3_params_key.format(epoch))
     return
 
 
@@ -142,7 +142,7 @@ def main():
                 filename = 'output_epoch_{}.txt'.format(nb_epoch)
                 with open(filename, 'a') as f:
                     json.dump(txt, f)
-                s3.Bucket(bucket_name).upload_file(filename, filename)
+                s3.Bucket(BUCKET_NAME).upload_file(filename, filename)
     else:
         model.load_weights("model_params.h5")
         for i in range (5):
