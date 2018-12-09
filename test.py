@@ -109,7 +109,7 @@ def generate_text(epoch, length=400):
             i+=1
     return generated
 
-def store_weights(model, epoch):
+def store_weights(model, epoch=None):
     local_params_path = "model_params" # temp path to export your network parameters i.e. weights
     bucket_name = "psgeorge-deeplearning-bucket" # s3 key to save your network to
     s3_params_key = "v2_model_params_{}_epochs" # s3 key to save your network parameters i.e. weights
@@ -125,6 +125,7 @@ def main():
     train=True
 
     if train:
+        store_weights(model, 'test')
         while nb_epoch < 61:
             nb_epoch += 1
             model.fit(x, y,
@@ -137,7 +138,7 @@ def main():
                 print('\n')
             if nb_epoch % 10 == 0:
                 # Save/log generated text somewhere, maybe just for checkpoint epochs
-                store_weights(model)
+                store_weights(model, nb_epoch)
                 filename = 'output_epoch_{}.txt'.format(nb_epoch)
                 with open(filename, 'a') as f:
                     json.dump(txt, f)
