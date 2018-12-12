@@ -21,7 +21,7 @@ import json
 
 
 class MarxBot(object):
-    def __init__(self, sources=['data.txt'], sequence_length=50, diversity=0.7):
+    def __init__(self, sources=['data.txt'], sequence_length=100, diversity=0.7):
         self.__model = None
         self.__diversity = diversity
         self.__sources = sources 
@@ -45,39 +45,39 @@ class MarxBot(object):
         Build vocabulary of characters from the provided text files
         """
         # temporary, for testing
-        path = get_file( 'nietzsche.txt',
-            origin='https://s3.amazonaws.com/text-datasets/nietzsche.txt')
-        with io.open(path, encoding='utf-8') as f:
-            self.__text = f.read().lower()
+        # path = get_file( 'nietzsche.txt',
+        #     origin='https://s3.amazonaws.com/text-datasets/nietzsche.txt')
+        # with io.open(path, encoding='utf-8') as f:
+        #     self.__text = f.read().lower()
         ########
 
-        # for line in self.text_gen():
-        #     self.__text += line
+        print('Building vocabulary...')
+        for line in self.text_gen():
+            self.__text += line
             # for word embedding
             # for word in line:
-            #     self.__vocab.add(word)
+            #    self.__vocab.add(word)
         # using character level model for now
         self.__chars = sorted(list(set(self.__text)))
         self.__vocab_size = len(self.__chars)
         self.__ci = dict((c, i) for i, c in enumerate(self.__chars))
         self.__ic = dict((i, c) for i, c in enumerate(self.__chars))
         self.__corpus_length = len(self.__text)
+        print('Corpus length:', self.__corpus_length)
         return
 
     def clean_line(self, line):
-        PUNCTUATION = ['!','?', ':', ';', ',', '.', '(', ')','`','-', '"', '\'', '\n', '/', '{', '}', '*', '%', '$', '>', '=','_', '\\', '[', ']', '\x1f']
+        BAD_PUNCTUATION = ['(', ')','`','/', '{', '}', '*', '%', '$', '>', '=','_', '\\', '[', ']', '\x1f'] 
+        PUNCTUATION = ['!','?', ':', ';', ',', '.','-', '"', '\'',]
         NUMERICS = [str(x) for x in range(10)]
-        CHECKLIST = PUNCTUATION + NUMERICS
+        CHECKLIST = BAD_PUNCTUATION + NUMERICS
         # Return the line as list of words without punctuation and numeric symbols
         result = []
         line = line.replace('\xef', ' ')
-        for word in line.split(' '):
-            # While loop only necessary if double punctuation appears
-            for char in CHECKLIST:
-                word = word.replace(char, '')
-            if word:
-                result.append(word)
-        return result
+        for char in CHECKLIST:
+            line = line.replace(char, '')
+            line = line.lower()
+        return line
 
     def text_gen(self):
         for fname in self.__sources:
@@ -128,7 +128,7 @@ class MarxBot(object):
 
     def train(self, online=False):
         # cut the text in semi-redundant sequences of seqlen characters
-        self.cut_text(40)
+        self.cut_text(1)
         nb_sequences = len(self.__sentences)
         print('nb sequences:', len(self.__sentences))
         # Create input and target sequences
@@ -142,7 +142,7 @@ class MarxBot(object):
 
         if online:
             # Test save functions before training
-            weights_filename = "v3_model_params_{}_epochs".format(nb_epoch) # temp path to export your network parameters i.e. weights
+            weights_filename = "movie_model_params_{}_epochs".format(nb_epoch) # temp path to export your network parameters i.e. weights
             self.__model.save_weights(weights_filename)
             self.save_to_s3(weights_filename, weights_filename)
 
@@ -157,11 +157,11 @@ class MarxBot(object):
                 print('----- Diversity = {} -----'.format(k))
                 print(v)
                 print('\n')
-            if nb_epoch % 10 == 0 or nb_epoch == 1:
-                weights_filename = "v3_model_params_{}_epochs".format(nb_epoch) # temp path to export your network parameters i.e. weights
+            if nb_epoch % 5 == 0 or nb_epoch == 1:
+                weights_filename = "movie_model_params_{}_epochs".format(nb_epoch) # temp path to export your network parameters i.e. weights
                 self.__model.save_weights(weights_filename)
                 # Log generated text
-                filename = 'output_epoch_{}.txt'.format(nb_epoch)
+                filename = 'movie_output_epoch_{}.txt'.format(nb_epoch)
                 with open(filename, 'a') as f:
                     json.dump(txt, f)
                 if online:
@@ -238,15 +238,15 @@ class MarxBot(object):
 def main():
     marx = MarxBot()
     # either train, or load weights
-    marx.train()
+    marx.train_online()
 
     # marx.load('model_params.h5')
-    for i in range (5):
-        txt = marx.generate_text(None, 500)
-        for k,v in txt.items():
-            print('----- Diversity = {} -----'.format(k))
-            print(v)
-            print('\n')
+    # for i in range (5):
+    #     txt = marx.generate_text(None, 500)
+    #     for k,v in txt.items():
+    #         print('----- Diversity = {} -----'.format(k))
+    #         print(v)
+    #         print('\n')
 
 
 if __name__=="__main__":
