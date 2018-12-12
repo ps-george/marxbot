@@ -22,8 +22,8 @@ class PersonBot():
 
 
 def main():
-    marx = MarxBot("corpus.txt", diversity=0.6)
-    marx.load('model_params.h5')
+    marx = MarxBot("datasets/nietzsche.txt", diversity=0.6)
+    marx.load('params/model_params.h5')
     chatbot = ChatBot()
     chatty_marx = PersonBot(chatbot, marx)
 
