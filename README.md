@@ -26,15 +26,13 @@ scp -i /path/my-key-pair.pem /path/SampleFile.txt ubuntu@c2-198-51-100-1.compute
 
 ## TODO
 
-- [ ] Tidy up dataset
-- [ ] Store dataset somewhere
-- [ ] Write API
-- [ ] Write pre-processing code (clean data, load data, etc.)
+- [x] Tidy up dataset
+- [x] Store dataset somewhere
+- [x] Write API
 - [ ] Get report format and create report outline (names, structure, etc.)
+- [x] Figure out plan for AWS/Google compute instances
+- [x] Get network running on the cloud
 - [ ] Use article to help create a Keras network that runs
-- [ ] Figure out plan for AWS/Google compute instances
-
-- [ ] Get network running on the cloud
 
 ## Notes
 
