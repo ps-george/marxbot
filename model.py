@@ -21,8 +21,9 @@ import json
 
 
 class MarxBot(object):
-    def __init__(self, sources=['data.txt'], sequence_length=100):
+    def __init__(self, sources=['data.txt'], sequence_length=50, diversity=0.7):
         self.__model = None
+        self.__diversity = diversity
         self.__sources = sources 
         self.__seqlen = sequence_length
         self.__sentences = []
@@ -127,7 +128,7 @@ class MarxBot(object):
 
     def train(self, online=False):
         # cut the text in semi-redundant sequences of seqlen characters
-        self.cut_text(1)
+        self.cut_text(40)
         nb_sequences = len(self.__sentences)
         print('nb sequences:', len(self.__sentences))
         # Create input and target sequences
@@ -176,6 +177,27 @@ class MarxBot(object):
         probas = np.random.multinomial(1, preds, 1)
         return np.argmax(probas)
 
+    def respond(self, seed):
+        """Generate text from seed text."""
+        ENDINGS = ['.', '!', '?']
+        generated = {}
+        seed = seed[-self.__seqlen:]
+        next_char = ''
+        sentence = seed
+        generated= ''
+        while (next_char not in ENDINGS):
+            prev_char = next_char
+            x_pred = np.zeros((1, len(sentence), self.__vocab_size))
+            for t, char in enumerate(sentence):
+                x_pred[0, t, self.__ci[char]] = 1.
+            preds = self.__model.predict(x_pred, verbose=0)[0]
+            next_index = self.sample(preds, self.__diversity)
+            next_char = self.__ic[next_index]
+            if next_char == '\n' and prev_char not in ENDINGS:
+                next_char = np.random.choice([' ', ',',';'])
+            generated += next_char
+            sentence = sentence[1:] + next_char
+        return generated
 
     def generate_text(self, epoch, length=400):
         ENDINGS = ['.', '!', '?', ' ']
@@ -216,9 +238,9 @@ class MarxBot(object):
 def main():
     marx = MarxBot()
     # either train, or load weights
-    # marx.train_online()
+    marx.train()
 
-    marx.load('model_params.h5')
+    # marx.load('model_params.h5')
     for i in range (5):
         txt = marx.generate_text(None, 500)
         for k,v in txt.items():
