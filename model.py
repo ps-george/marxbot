@@ -1,18 +1,6 @@
-'''Example script to generate text from Nietzsche's writings.
-
-At least 20 epochs are required before the generated text
-starts sounding coherent.
-
-It is recommended to run this script on GPU, as recurrent
-networks are quite computationally intensive.  
-If you try this script on new data, make sure your corpus
-has at least ~100k characters. ~1M is better.
-'''
-from __future__ import print_function
 from keras.models import Sequential
-from keras.layers import Activation, LSTM, Dense, TimeDistributed, GRU
+from keras.layers import Activation, LSTM, Dense
 from keras.optimizers import RMSprop
-from keras.utils.data_utils import get_file
 import numpy as np
 import random
 import sys
@@ -44,16 +32,11 @@ class MarxBot(object):
         """
         Build vocabulary of characters from the provided text files
         """
-        # temporary, for testing
-        # path = get_file( 'nietzsche.txt',
-        #     origin='https://s3.amazonaws.com/text-datasets/nietzsche.txt')
-        # with io.open(path, encoding='utf-8') as f:
-        #     self.__text = f.read().lower()
-        ########
 
         print('Building vocabulary...')
         for line in self.text_gen():
             self.__text += line
+
             # for word embedding
             # for word in line:
             #    self.__vocab.add(word)
@@ -67,8 +50,9 @@ class MarxBot(object):
         return
 
     def clean_line(self, line):
+        """Remove bad punctuation and numerics from the text."""
         BAD_PUNCTUATION = ['(', ')','`','/', '{', '}', '*', '%', '$', '>', '=','_', '\\', '[', ']', '\x1f'] 
-        PUNCTUATION = ['!','?', ':', ';', ',', '.','-', '"', '\'',]
+        # PUNCTUATION = ['!','?', ':', ';', ',', '.','-', '"', '\'',] # for this model these are fine
         NUMERICS = [str(x) for x in range(10)]
         CHECKLIST = BAD_PUNCTUATION + NUMERICS
         # Return the line as list of words without punctuation and numeric symbols
@@ -80,13 +64,14 @@ class MarxBot(object):
         return line
 
     def text_gen(self):
+        """Generate cleaned text from the sources."""
         for fname in self.__sources:
             with open(fname, encoding='utf8', errors='ignore') as f:
                 for line in f:
                     yield self.clean_line(line)
        
     def vectorization(self):
-        #  Create input and target sequences
+        """Create input and target sequences for the RNN."""
         nb_sequences = len(self.__sentences)
         self.__x = np.zeros((nb_sequences, self.__seqlen, self.__vocab_size), dtype=np.bool)
         self.__y = np.zeros((nb_sequences, self.__vocab_size), dtype=np.bool)
@@ -97,12 +82,13 @@ class MarxBot(object):
         return
 
     def cut_text(self, step):
+        """Cut the text into sentences `seqlen` long and store the next characters following a sequence."""
         for i in range(0, self.__corpus_length - self.__seqlen, step):
             self.__sentences.append(self.__text[i: i + self.__seqlen])
             self.__next_chars.append(self.__text[i + self.__seqlen])
         
     def build_model(self):
-        # build the model: a single LSTM
+        """Build the RNN model; using one LSTM and a Dense activation layer."""
         print('Build model...')
         hidden_dim = 128
         self.__model = Sequential()
@@ -112,6 +98,7 @@ class MarxBot(object):
         self.__model.compile(loss='categorical_crossentropy', optimizer=optimizer)
 
     def save_to_s3(self, local_name, s3_name):
+        """Used when training on AWS servers. Save file to s3 bucket."""
         import boto3
         # save to file
         BUCKET_NAME = "psgeorge-deeplearning-bucket" # s3 key to save your network to
@@ -121,16 +108,17 @@ class MarxBot(object):
 
     def train_online(self):
         self.train(True)
-        # Try to terminate instance when training is complete (to save monies)
         import boto3
+        # When training is finished, terminate this instance to save money
         ec2 = boto3.resource('ec2', region_name='eu-central-1')
         ec2.instances.filter(InstanceIds=['i-04fc019e944e13688']).terminate()
 
     def train(self, online=False):
-        # cut the text in semi-redundant sequences of seqlen characters
+        """Train the neural network"""
         self.cut_text(1)
         nb_sequences = len(self.__sentences)
         print('nb sequences:', len(self.__sentences))
+
         # Create input and target sequences
         print('Vectorization...')
         self.vectorization()
@@ -152,7 +140,7 @@ class MarxBot(object):
             self.__model.fit(self.__x, self.__y,
                 batch_size=BATCH_SIZE,
                 epochs=1)
-            txt = self.generate_text(nb_epoch)
+            txt = self.generate_text()
             for k,v in txt.items():
                 print('----- Diversity = {} -----'.format(k))
                 print(v)
@@ -169,7 +157,7 @@ class MarxBot(object):
                     self.save_to_s3(filename, filename)
 
     def sample(self, preds, temperature=1.0):
-        # helper function to sample an index from a probability array
+        """helper function to sample an index from a probability array."""
         preds = np.asarray(preds).astype('float64')
         preds = np.log(preds) / temperature
         exp_preds = np.exp(preds)
@@ -178,7 +166,7 @@ class MarxBot(object):
         return np.argmax(probas)
 
     def respond(self, seed):
-        """Generate text from seed text."""
+        """Generate text based on a given seed text."""
         ENDINGS = ['.', '!', '?']
         generated = {}
         seed = seed[-self.__seqlen:]
@@ -199,7 +187,8 @@ class MarxBot(object):
             sentence = sentence[1:] + next_char
         return generated
 
-    def generate_text(self, epoch, length=400):
+    def generate_text(self, length=400):
+        """Generate text using the trained model."""
         ENDINGS = ['.', '!', '?', ' ']
         start_index = random.randint(0, self.__corpus_length - self.__seqlen - 1)
         generated = {}
