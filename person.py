@@ -1,9 +1,4 @@
-from model import MarxBot
-
-class ChatBot():
-    """Dummy ChatBot"""
-    def respond(self, text):
-        return "I'm sorry, I don't understand you.".lower()
+from model import ChatBot
 
 class PersonBot():
     """
@@ -13,32 +8,32 @@ class PersonBot():
         self.chatbot = chatbot
         self.personality = personality
 
-    def respond(self, text, history):
+    def respond(self, text):
         """Respond to text using chatbot + personality."""
         response = self.chatbot.respond(text)
+        response = response.replace('.',',')
+        # print('chatbot:', response)
+        history = text + response
         # Use response from chatbot to seed personality response.
-        response = self.personality.respond(history)
+        response += self.personality.respond(history.lower().replace('\n', ''))
+        # print('final:', response)
         return response
 
 
 def main():
-    marx = MarxBot("datasets/nietzsche.txt", diversity=0.6)
-    marx.load('params/model_params.h5')
-    chatbot = ChatBot()
+    marx = ChatBot(["marx.txt"], diversity=0.6)
+    marx.load('params/marx_model_params_10_epochs')
+    chatbot = ChatBot(["movie.txt"], diversity=0.5)
+    chatbot.load('params/movie_model_params_2_epochs')
     chatty_marx = PersonBot(chatbot, marx)
 
     # REPL loop for chatting to marx
-    history = True
-    text = 'Hi! Nice to meet you, I am Karl.'.lower()
-    chat_history = ''
-    if history:
-        chat_history = text
+    text = 'Hi! Nice to meet you, I am Karl. I\'ve been watching some movies to learn modern lingo. Talk to me about philosophy.'.lower()
+    chat_history = text
     while (True):
         message = input(text + '\n').lower()
-        print('\n')
-        if history:
-            chat_history += message
-        text = chatty_marx.respond(message, chat_history)
+        chat_history += message
+        text = chatty_marx.respond(chat_history)
 
 if __name__ == "__main__":
     main()

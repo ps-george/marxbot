@@ -7,11 +7,11 @@ import sys
 import io
 import json
 
-
-class MarxBot(object):
-    def __init__(self, sources=['data.txt'], sequence_length=100, diversity=0.7):
+class ChatBot(object):
+    def __init__(self, sources=['data.txt'], sequence_length=100, diversity=0.7, s3bucket=''):
         self.__model = None
         self.__diversity = diversity
+        self.__s3bucket = s3bucket
         self.__sources = sources 
         self.__seqlen = sequence_length
         self.__sentences = []
@@ -101,7 +101,7 @@ class MarxBot(object):
         """Used when training on AWS servers. Save file to s3 bucket."""
         import boto3
         # save to file
-        BUCKET_NAME = "psgeorge-deeplearning-bucket" # s3 key to save your network to
+        BUCKET_NAME = self.__s3bucket # s3 key to save your network to
         s3 = boto3.resource('s3')
         s3.Bucket(BUCKET_NAME).upload_file(local_name, s3_name)
         return
@@ -167,7 +167,7 @@ class MarxBot(object):
 
     def respond(self, seed):
         """Generate text based on a given seed text."""
-        ENDINGS = ['.', '!', '?']
+        ENDINGS = ['.', '!', '?', '\n', ',', ';']
         generated = {}
         seed = seed[-self.__seqlen:]
         next_char = ''
@@ -181,10 +181,10 @@ class MarxBot(object):
             preds = self.__model.predict(x_pred, verbose=0)[0]
             next_index = self.sample(preds, self.__diversity)
             next_char = self.__ic[next_index]
-            if next_char == '\n' and prev_char not in ENDINGS:
-                next_char = np.random.choice([' ', ',',';'])
             generated += next_char
             sentence = sentence[1:] + next_char
+        if generated[-1] in [',',';']:
+            generated = generated[:-1]
         return generated
 
     def generate_text(self, length=400):
@@ -225,13 +225,13 @@ class MarxBot(object):
         self.__model.load_weights(weights_file)
 
 def main():
-    marx = MarxBot()
+    chatbot = ChatBot(s3bucket='')
     # either train, or load weights
-    marx.train_online()
+    chatbot.train_online()
 
-    # marx.load('model_params.h5')
+    # chatbot.load('model_params.h5')
     # for i in range (5):
-    #     txt = marx.generate_text(None, 500)
+    #     txt = chatbot.generate_text(None, 500)
     #     for k,v in txt.items():
     #         print('----- Diversity = {} -----'.format(k))
     #         print(v)
