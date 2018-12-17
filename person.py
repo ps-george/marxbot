@@ -21,9 +21,9 @@ class PersonBot():
 
 
 def main():
-    marx = ChatBot(["marx.txt"], diversity=0.6)
+    marx = ChatBot(["data/marx.txt"], diversity=0.6)
     marx.load('params/marx_model_params_10_epochs')
-    chatbot = ChatBot(["movie.txt"], diversity=0.5)
+    chatbot = ChatBot(["data/movie.txt"], diversity=0.5)
     chatbot.load('params/movie_model_params_2_epochs')
     chatty_marx = PersonBot(chatbot, marx)
 
