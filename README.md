@@ -3,14 +3,15 @@ ChatBot resurrection of Karl Marx
 
 ## Using the chatbot
 
-1. Ensure data is available in directory 'marx.txt' and 'movie.txt'
-2. Run person.py for a REPL loop with Marx.
+1. Ensure all requirements are installed `pip install -r requirements.txt`
+2. Ensure data is available in working directory: `marx.txt` and `movie.txt`
+3. Run `person.py` for a REPL loop with Marx, or create your own program using the PersonBot class.
 
 ## Loading weights
 
 1. Install requirements `pip install -r requirements.txt`
-2. Import MarxBot from model.py
-3. Initialize the class MarxBot e.g. `marx = MarxBot(sources=['marx.txt'])`
+2. Import ChatBot from model.py
+3. Initialize the class MarxBot e.g. `marx = ChatBot(sources=['marx.txt'])`
 4. Call `marx.load('path/to/weights')`
 
 ## Training
@@ -43,12 +44,3 @@ scp -i /path/my-key-pair.pem /path/SampleFile.txt ubuntu@c2-198-51-100-1.compute
 
 ### To activate tensorflow on Deep Learning AMIs.
 `source activate tensorflow_p36`
-
-## Todo list
-- [x] Tidy up dataset
-- [x] Store dataset somewhere
-- [x] Write API
-- [x] Figure out plan for AWS/Google compute instances
-- [x] Get network running on the cloud
-- [x] Use article to help create a Keras network that runs
-
